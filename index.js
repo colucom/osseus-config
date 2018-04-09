@@ -5,6 +5,14 @@ const _ = require('lodash')
 const parser = function (keys, data) {
   const result = {}
   keys.forEach((k) => {
+    let value = data[k]
+    if (typeof value == 'string') {
+      value = value.toLowerCase()
+      value = value.split('\'').join('"')
+    }
+    try {
+      value = JSON.parse(value)
+    } catch (e) {}
     let lowerK = k.toLowerCase()
     if (_.startsWith(lowerK, 'osseus_')) {
       let temp = lowerK.split('_')
@@ -12,12 +20,12 @@ const parser = function (keys, data) {
       let innerKey = _.slice(temp, 2, temp.length).join('_')
 
       result[topKey] = result[topKey] || {}
-      result[topKey][innerKey] = data[k].toLowerCase()
+      result[topKey][innerKey] = value
     } else if (_.startsWith(lowerK, 'cfg_')) {
       let key = lowerK.replace('cfg_', '')
-      result[key] = data[k].toLowerCase()
+      result[key] = value
     } else {
-      result[lowerK] = data[k].toLowerCase()
+      result[lowerK] = value
     }
   })
   return result
