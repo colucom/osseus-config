@@ -13,6 +13,9 @@ const parser = function (keys, data) {
 
       result[topKey] = result[topKey] || {}
       result[topKey][innerKey] = data[k].toLowerCase()
+    } else if (_.startsWith(lowerK, 'cfg_')) {
+      let key = lowerK.replace('cfg_', '')
+      result[key] = data[k].toLowerCase()
     } else {
       result[lowerK] = data[k].toLowerCase()
     }
@@ -26,8 +29,11 @@ const cliParser = function () {
 }
 
 const envParser = function () {
-  // TODO
-  return {}
+  const keys = _.remove(Object.keys(process.env), (k) => {
+    let lowerK = k.toLowerCase()
+    return _.startsWith(lowerK, 'cfg')
+  })
+  return parser(keys, process.env)
 }
 
 const fileParser = function () {

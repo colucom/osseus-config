@@ -41,3 +41,6 @@ console.log(`config keys: ${config.keys}`) // config keys: env,debug,logger,serv
 ```console
 $ node index.js --ENV LOCAL
 ```
+
+##### IMPORTANT NOTE
+Environment variables should have a prefix `CFG_`
