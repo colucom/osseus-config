@@ -8,7 +8,7 @@ const parser = function (keys, data) {
     let lowerK = k.toLowerCase()
     if (_.startsWith(lowerK, 'osseus_')) {
       let temp = lowerK.split('_')
-      let topKey = temp[1]
+      let topKey = _.slice(temp, 0, 2).join('_')
       let innerKey = _.slice(temp, 2, temp.length).join('_')
 
       result[topKey] = result[topKey] || {}
