@@ -44,17 +44,15 @@ const fileParser = function () {
 }
 
 const init = function () {
-  let self = this
-
   return new Promise((resolve, reject) => {
     const cliConf = cliParser()
     const envConf = envParser()
     const fileConf = fileParser()
 
-    self = _.assign({}, cliConf, envConf, fileConf)
-    self.keys = Object.keys(self)
+    _.assign(this, cliConf, envConf, fileConf)
+    this.keys = Object.keys(this)
 
-    resolve(self)
+    resolve(this)
   })
 }
 
