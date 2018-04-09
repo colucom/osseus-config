@@ -6,7 +6,7 @@ const parser = function (keys, data) {
   const result = {}
   keys.forEach((k) => {
     let value = data[k]
-    if (typeof value == 'string') {
+    if (typeof value === 'string') {
       value = value.toLowerCase()
       value = value.split('\'').join('"')
     }
