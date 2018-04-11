@@ -44,3 +44,6 @@ $ node index.js --ENV LOCAL
 
 ##### IMPORTANT NOTE
 Environment variables should have a prefix `CFG_`
+
+## License
+Code released under the [MIT License](https://github.com/colucom/osseus-config/blob/master/LICENSE).
