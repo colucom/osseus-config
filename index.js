@@ -46,7 +46,7 @@ const envParser = function () {
 
 const fileParser = function () {
   const cwd = process.cwd()
-  const env = argv['ENV'] || process.env['ENV']
+  const env = (argv['ENV'] || process.env['ENV'] || 'local').toUpperCase()
 
   if (!env) {
     return {}
