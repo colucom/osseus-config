@@ -38,7 +38,7 @@ const cliParser = function () {
 const envParser = function () {
   const keys = _.remove(Object.keys(process.env), (k) => {
     let lowerK = k.toLowerCase()
-    return _.startsWith(lowerK, 'cfg')
+    return _.startsWith(lowerK, 'cfg') || _.startsWith(lowerK, 'osseus')
   })
   return parser(keys, process.env)
 }
