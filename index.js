@@ -2,8 +2,9 @@ const path = require('path')
 const argv = require('yargs').argv
 const _ = require('lodash')
 
+const result = {}
+
 const parser = function (keys, data) {
-  const result = {}
   keys.forEach((k) => {
     let value = data[k]
     if (typeof value === 'string') {
