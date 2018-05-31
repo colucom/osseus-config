@@ -1,6 +1,10 @@
 const path = require('path')
 const argv = require('yargs').argv
 const _ = require('lodash')
+const async = require('async')
+const AWS = require('aws-sdk')
+const env = (argv['ENV'] || process.env['ENV'] || 'local').toUpperCase()
+const application = (argv['APPLICATION_NAME'] || process.env['APPLICATION_NAME']).toUpperCase()
 
 const result = {}
 
@@ -46,7 +50,6 @@ const envParser = function () {
 
 const fileParser = function () {
   const cwd = process.cwd()
-  const env = (argv['ENV'] || process.env['ENV'] || 'local').toUpperCase()
 
   if (!env) {
     return {}
@@ -57,13 +60,81 @@ const fileParser = function () {
   return parser(keys, envFile)
 }
 
+const secretsParser = function () {
+  const endpoint = argv['AWS_SECRETS_ENDPOINT'] || process.env['AWS_SECRETS_ENDPOINT'] || 'https://secretsmanager.eu-west-1.amazonaws.com'
+  const region = argv['AWS_REGION'] || process.env['AWS_REGION'] || 'eu-west-1'
+
+  if (!endpoint || !region || !env || !application) {
+    console.log('missing secrets configuration skipping')
+    return {}
+  }
+
+  // Create a Secrets Manager client
+  const client = new AWS.SecretsManager({
+    endpoint: endpoint,
+    region: region
+  })
+
+  client.listSecrets({}, function (err, secretList) {
+    if (err) {
+      console.log('cannot get secrets list skipping')
+      return {}
+    }
+
+    var filtered = secretList.SecretList.filter(function (entry) {
+      const name = entry.Name && entry.Name.toUpperCase()
+      const check = env + '/' + application + '_'
+      const general = env + '/' + 'GLOBAL_'
+
+      return (!!~(name.indexOf(check.toUpperCase())) || !!~(name.indexOf(general.toUpperCase())))
+    })
+
+    async.each(filtered, function (secretFile, icb) {
+      console.log('loading ', secretFile.ARN)
+      client.getSecretValue({SecretId: secretFile.ARN}, function (err, data) {
+        if (err) {
+          if (err.code === 'ResourceNotFoundException') {
+            console.log('The requested secret ' + secretFile.ARN + ' was not found')
+          } else if (err.code === 'InvalidRequestException') {
+            console.log('The request was invalid due to: ' + err.message)
+          } else if (err.code === 'InvalidParameterException') {
+            console.log('The request had invalid params: ' + err.message)
+          }
+
+          icb(err)
+        } else {
+          if (data.SecretString !== '') {
+            try {
+              const JSONdata = JSON.parse(data.SecretString)
+              return icb(null, parser(Object.keys(JSONdata), JSONdata))
+            } catch (e) {
+              icb(e)
+            }
+          } else {
+            console.log('AWS secrets is empty!!')
+            icb()
+          }
+        }
+      })
+    }, function (err, result) {
+      if (err) {
+        console.log(err)
+        throw new Error(err)
+      }
+
+      return _.merge({}, result)
+    })
+  })
+}
+
 const init = function () {
   return new Promise((resolve, reject) => {
     const cliConf = cliParser()
     const envConf = envParser()
     const fileConf = fileParser()
+    const secretsConf = secretsParser()
 
-    _.assign(this, cliConf, envConf, fileConf)
+    _.assign(this, envConf, fileConf, secretsConf, cliConf)
     this.keys = Object.keys(this)
 
     resolve(this)
