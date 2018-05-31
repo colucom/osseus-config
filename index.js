@@ -5,6 +5,14 @@ const async = require('async')
 const AWS = require('aws-sdk')
 const env = (argv['ENV'] || process.env['ENV'] || '').toUpperCase()
 const application = (argv['APPLICATION_NAME'] || process.env['APPLICATION_NAME'] || '').toUpperCase()
+const endpoint = argv['AWS_SECRETS_ENDPOINT'] || process.env['AWS_SECRETS_ENDPOINT'] || 'https://secretsmanager.eu-west-1.amazonaws.com'
+const region = argv['AWS_REGION'] || process.env['AWS_REGION'] || 'eu-west-1'
+
+// Create a Secrets Manager client
+const secretsClient = new AWS.SecretsManager({
+  endpoint: endpoint,
+  region: region
+})
 
 const result = {}
 
@@ -33,6 +41,49 @@ const parser = function (keys, data) {
     }
   })
   return result
+}
+
+const fetchSecrets = function (token, limit, list, cb) {
+  if (!env || !application) {
+    console.warn(`missing secrets configuration - skipping`)
+    return cb(null, [])
+  }
+
+  list = list || []
+
+  let options = {
+    MaxResults: limit
+  }
+
+  if (token) options.NextToken = token
+
+  secretsClient.listSecrets(options, function (err, secretList) {
+    if (err) {
+      console.error(`cannot get secrets list with error: ${err}`)
+      return cb(err)
+    }
+
+    if (!secretList || secretList.length === 0) {
+      console.warn(`secretList undefined or empty`)
+      return cb(null, [])
+    }
+
+    const filtered = secretList.SecretList.filter(function (entry) {
+      const name = entry.Name && entry.Name.toUpperCase()
+      const check = env + '/' + application + '_'
+      const general = env + '/' + 'GLOBAL_'
+
+      return (!!~(name.indexOf(check.toUpperCase())) || !!~(name.indexOf(general.toUpperCase())))
+    })
+
+    const concated = list.concat(filtered)
+
+    if (secretList.NextToken) {
+      return fetchSecrets(token, limit, concated, cb)
+    } else {
+      return cb(null, concated)
+    }
+  })
 }
 
 const cliParser = function () {
@@ -66,42 +117,14 @@ const fileParser = function () {
 
 const secretsParser = function () {
   return new Promise((resolve, reject) => {
-    const endpoint = argv['AWS_SECRETS_ENDPOINT'] || process.env['AWS_SECRETS_ENDPOINT'] || 'https://secretsmanager.eu-west-1.amazonaws.com'
-    const region = argv['AWS_REGION'] || process.env['AWS_REGION'] || 'eu-west-1'
-
-    if (!endpoint || !region || !env || !application) {
-      console.warn(`missing secrets configuration - skipping`)
-      resolve({})
-    }
-
-    // Create a Secrets Manager client
-    const client = new AWS.SecretsManager({
-      endpoint: endpoint,
-      region: region
-    })
-
-    client.listSecrets({MaxResults: 100}, function (err, secretList) {
+    fetchSecrets(null, 50, [], function (err, filtered) {
       if (err) {
-        console.error(`cannot get secrets list - skipping: ${err}`)
-        resolve({})
+        reject(err)
       }
-
-      if (!secretList || secretList.length === 0) {
-        console.warn(`secretList undefined or empty`)
-        resolve({})
-      }
-
-      const filtered = secretList.SecretList.filter(function (entry) {
-        const name = entry.Name && entry.Name.toUpperCase()
-        const check = env + '/' + application + '_'
-        const general = env + '/' + 'GLOBAL_'
-
-        return (!!~(name.indexOf(check.toUpperCase())) || !!~(name.indexOf(general.toUpperCase())))
-      })
 
       async.each(filtered, function (secretFile, icb) {
         console.log(`loading ${secretFile.ARN}`)
-        client.getSecretValue({SecretId: secretFile.ARN}, function (err, data) {
+        secretsClient.getSecretValue({SecretId: secretFile.ARN}, function (err, data) {
           if (err) {
             if (err.code === 'ResourceNotFoundException') {
               console.error(`The requested secret ${secretFile.ARN} was not found`)
