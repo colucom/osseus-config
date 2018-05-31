@@ -70,7 +70,7 @@ const secretsParser = function () {
     const region = argv['AWS_REGION'] || process.env['AWS_REGION'] || 'eu-west-1'
 
     if (!endpoint || !region || !env || !application) {
-      console.log(`missing secrets configuration - skipping`)
+      console.warn(`missing secrets configuration - skipping`)
       resolve({})
     }
 
@@ -80,13 +80,18 @@ const secretsParser = function () {
       region: region
     })
 
-    client.listSecrets({}, function (err, secretList) {
+    client.listSecrets({MaxResults: 100}, function (err, secretList) {
       if (err) {
-        console.log(`cannot get secrets list - skipping`)
+        console.error(`cannot get secrets list - skipping: ${err}`)
         resolve({})
       }
 
-      var filtered = secretList.SecretList.filter(function (entry) {
+      if (!secretList || secretList.length === 0) {
+        console.warn(`secretList undefined or empty`)
+        resolve({})
+      }
+
+      const filtered = secretList.SecretList.filter(function (entry) {
         const name = entry.Name && entry.Name.toUpperCase()
         const check = env + '/' + application + '_'
         const general = env + '/' + 'GLOBAL_'
@@ -99,11 +104,11 @@ const secretsParser = function () {
         client.getSecretValue({SecretId: secretFile.ARN}, function (err, data) {
           if (err) {
             if (err.code === 'ResourceNotFoundException') {
-              console.log(`The requested secret ${secretFile.ARN} was not found`)
+              console.error(`The requested secret ${secretFile.ARN} was not found`)
             } else if (err.code === 'InvalidRequestException') {
-              console.log(`The request was invalid due to: ${err.message}`)
+              console.error(`The request was invalid due to: ${err.message}`)
             } else if (err.code === 'InvalidParameterException') {
-              console.log(`The request had invalid params: ${err.message}`)
+              console.error(`The request had invalid params: ${err.message}`)
             }
             icb(err)
           } else {
@@ -115,14 +120,14 @@ const secretsParser = function () {
                 icb(e)
               }
             } else {
-              console.log(`AWS secrets is empty!!`)
+              console.warn(`AWS secrets is empty!!, ${secretFile.ARN}`)
               icb()
             }
           }
         })
       }, function (err, result) {
         if (err) {
-          console.lerrorog(err)
+          console.error(err)
           reject(err)
         }
         resolve(_.merge({}, result))
