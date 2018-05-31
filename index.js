@@ -3,8 +3,8 @@ const argv = require('yargs').argv
 const _ = require('lodash')
 const async = require('async')
 const AWS = require('aws-sdk')
-const env = (argv['ENV'] || process.env['ENV'] || 'local').toUpperCase()
-const application = (argv['APPLICATION_NAME'] || process.env['APPLICATION_NAME']).toUpperCase()
+const env = (argv['ENV'] || process.env['ENV'] || '').toUpperCase()
+const application = (argv['APPLICATION_NAME'] || process.env['APPLICATION_NAME'] || '').toUpperCase()
 
 const result = {}
 
