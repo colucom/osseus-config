@@ -1,6 +1,18 @@
 const path = require('path')
 const argv = require('yargs').argv
 const _ = require('lodash')
+const async = require('async')
+const AWS = require('aws-sdk')
+const env = (argv['ENV'] || process.env['ENV'] || '').toUpperCase()
+const application = (argv['APPLICATION_NAME'] || process.env['APPLICATION_NAME'] || '').toUpperCase()
+const endpoint = argv['AWS_SECRETS_ENDPOINT'] || process.env['AWS_SECRETS_ENDPOINT'] || 'https://secretsmanager.eu-west-1.amazonaws.com'
+const region = argv['AWS_REGION'] || process.env['AWS_REGION'] || 'eu-west-1'
+
+// Create a Secrets Manager client
+const secretsClient = new AWS.SecretsManager({
+  endpoint: endpoint,
+  region: region
+})
 
 const result = {}
 
@@ -31,42 +43,134 @@ const parser = function (keys, data) {
   return result
 }
 
+const fetchSecrets = function (token, limit, list, cb) {
+  if (!env || !application) {
+    console.warn(`missing secrets configuration - skipping`)
+    return cb(null, [])
+  }
+
+  list = list || []
+
+  let options = {
+    MaxResults: limit
+  }
+
+  if (token) options.NextToken = token
+
+  secretsClient.listSecrets(options, function (err, secretList) {
+    if (err) {
+      console.error(`cannot get secrets list with error: ${err}`)
+      return cb(err)
+    }
+
+    if (!secretList || secretList.length === 0) {
+      console.warn(`secretList undefined or empty`)
+      return cb(null, [])
+    }
+
+    const filtered = secretList.SecretList.filter(function (entry) {
+      const name = entry.Name && entry.Name.toUpperCase()
+      const check = env + '/' + application + '_'
+      const general = env + '/' + 'GLOBAL_'
+
+      return (!!~(name.indexOf(check.toUpperCase())) || !!~(name.indexOf(general.toUpperCase())))
+    })
+
+    const concated = list.concat(filtered)
+
+    if (secretList.NextToken) {
+      return fetchSecrets(token, limit, concated, cb)
+    } else {
+      return cb(null, concated)
+    }
+  })
+}
+
 const cliParser = function () {
-  const keys = _.difference(Object.keys(argv), ['_', 'help', 'version', '$0'])
-  return parser(keys, argv)
+  return new Promise((resolve, reject) => {
+    const keys = _.difference(Object.keys(argv), ['_', 'help', 'version', '$0'])
+    const result = parser(keys, argv)
+    resolve(result)
+  })
 }
 
 const envParser = function () {
-  const keys = _.remove(Object.keys(process.env), (k) => {
-    let lowerK = k.toLowerCase()
-    return _.startsWith(lowerK, 'cfg') || _.startsWith(lowerK, 'osseus')
+  return new Promise((resolve, reject) => {
+    const keys = _.remove(Object.keys(process.env), (k) => {
+      let lowerK = k.toLowerCase()
+      return _.startsWith(lowerK, 'cfg') || _.startsWith(lowerK, 'osseus')
+    })
+    const result = parser(keys, process.env)
+    resolve(result)
   })
-  return parser(keys, process.env)
 }
 
 const fileParser = function () {
-  const cwd = process.cwd()
-  const env = (argv['ENV'] || process.env['ENV'] || 'local').toUpperCase()
+  return new Promise((resolve, reject) => {
+    const cwd = process.cwd()
+    const envFile = require(path.join(cwd, '/config/', env || 'LOCAL'))
+    const keys = Object.keys(envFile)
+    const result = parser(keys, envFile)
+    resolve(result)
+  })
+}
 
-  if (!env) {
-    return {}
-  }
+const secretsParser = function () {
+  return new Promise((resolve, reject) => {
+    fetchSecrets(null, 50, [], function (err, filtered) {
+      if (err) {
+        reject(err)
+      }
 
-  const envFile = require(path.join(cwd, '/config/', env))
-  const keys = Object.keys(envFile)
-  return parser(keys, envFile)
+      async.each(filtered, function (secretFile, icb) {
+        console.log(`loading ${secretFile.ARN}`)
+        secretsClient.getSecretValue({SecretId: secretFile.ARN}, function (err, data) {
+          if (err) {
+            if (err.code === 'ResourceNotFoundException') {
+              console.error(`The requested secret ${secretFile.ARN} was not found`)
+            } else if (err.code === 'InvalidRequestException') {
+              console.error(`The request was invalid due to: ${err.message}`)
+            } else if (err.code === 'InvalidParameterException') {
+              console.error(`The request had invalid params: ${err.message}`)
+            }
+            icb(err)
+          } else {
+            if (data.SecretString !== '') {
+              try {
+                const JSONdata = JSON.parse(data.SecretString)
+                return icb(null, parser(Object.keys(JSONdata), JSONdata))
+              } catch (e) {
+                icb(e)
+              }
+            } else {
+              console.warn(`AWS secrets is empty!!, ${secretFile.ARN}`)
+              icb()
+            }
+          }
+        })
+      }, function (err, result) {
+        if (err) {
+          console.error(err)
+          reject(err)
+        }
+        resolve(_.merge({}, result))
+      })
+    })
+  })
 }
 
 const init = function () {
-  return new Promise((resolve, reject) => {
-    const cliConf = cliParser()
-    const envConf = envParser()
-    const fileConf = fileParser()
+  return new Promise(async (resolve, reject) => {
+    const envConf = await envParser()
+    const fileConf = await fileParser()
+    const secretsConf = await secretsParser()
+    const cliConf = await cliParser()
 
-    _.assign(this, cliConf, envConf, fileConf)
-    this.keys = Object.keys(this)
+    let result = {}
+    _.assign(result, envConf, fileConf, secretsConf, cliConf)
+    result.keys = Object.keys(result)
 
-    resolve(this)
+    resolve(result)
   })
 }
 
