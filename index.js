@@ -107,8 +107,11 @@ const envParser = function () {
 
 const fileParser = function () {
   return new Promise((resolve, reject) => {
+    if (!env) {
+      resolve({})
+    }
     const cwd = process.cwd()
-    const envFile = require(path.join(cwd, '/config/', env || 'LOCAL'))
+    const envFile = require(path.join(cwd, '/config/', env))
     const keys = Object.keys(envFile)
     const result = parser(keys, envFile)
     resolve(result)
