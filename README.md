@@ -42,7 +42,7 @@ $ node index.js
 
 Will result in:
 
-```json
+```js
 { some_var: 'value', keys: [ 'some_var' ] }
 ```
 
@@ -72,7 +72,7 @@ $ node index.js
 
 Will result in:
 
-```json
+```js
 { env: 'LOCAL',
   debug: true,
   osseus_logger: { log_level: 'debug' },
@@ -93,7 +93,7 @@ In order to use AWS Secrets need to define the following variables:
 * `AWS_SECRETS_ENDPOINT` (or `CFG_AWS_SECRETS_ENDPOINT`)
 	* default is `https://secretsmanager.eu-west-1.amazonaws.com`
 * `AWS_REGION` (or `CFG_AWS_REGION`)
-	* defaul is `eu-west-1`
+	* default is `eu-west-1`
 
 When all relevant variables are defined, the secrets file names should be `ENV/APPLICATION_NAME_*`
 
@@ -123,7 +123,7 @@ $ node index.js --PARAM_1 hello --PARAM_2 123 --PARAM_3 ["'something'"]
 
 Will result in:
 
-```json
+```js
 { param_1: 'hello',
   param_2: 123,
   param_3: [ 'something' ],
@@ -155,7 +155,7 @@ $ node index.js --MY_PARAM from_cli
 
 Will result in:
 
-```json
+```js
 { my_param: 'from_cli',
   env: 'LOCAL',
   keys: [ 'my_param', 'env' ] }
