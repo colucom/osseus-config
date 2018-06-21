@@ -112,7 +112,7 @@ Will look for `QA/MY_APP_*` and `QA/GLOBAL_*` in AWS secrets manager and add the
 
 
 ### CLI arguments
-`osseus-confing` is using [yargs](https://github.com/yargs/yargs) to parse CLI arguments.
+`osseus-config` is using [yargs](https://github.com/yargs/yargs) to parse CLI arguments.
 
 ##### Example
 Running:
