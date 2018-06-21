@@ -3,10 +3,10 @@ const argv = require('yargs').argv
 const _ = require('lodash')
 const async = require('async')
 const AWS = require('aws-sdk')
-const env = (argv['ENV'] || process.env['ENV'] || '').toUpperCase()
-const application = (argv['APPLICATION_NAME'] || process.env['APPLICATION_NAME'] || '').toUpperCase()
-const endpoint = argv['AWS_SECRETS_ENDPOINT'] || process.env['AWS_SECRETS_ENDPOINT'] || 'https://secretsmanager.eu-west-1.amazonaws.com'
-const region = argv['AWS_REGION'] || process.env['AWS_REGION'] || 'eu-west-1'
+const env = (argv['ENV'] || process.env['ENV'] || process.env['CFG_ENV'] || '').toUpperCase()
+const application = (argv['APPLICATION_NAME'] || process.env['APPLICATION_NAME'] || process.env['CFG_APPLICATION_NAME'] || '').toUpperCase()
+const endpoint = argv['AWS_SECRETS_ENDPOINT'] || process.env['AWS_SECRETS_ENDPOINT'] || process.env['CFG_AWS_SECRETS_ENDPOINT'] || 'https://secretsmanager.eu-west-1.amazonaws.com'
+const region = argv['AWS_REGION'] || process.env['AWS_REGION'] || process.env['CFG_AWS_REGION'] || 'eu-west-1'
 
 // Create a Secrets Manager client
 const secretsClient = new AWS.SecretsManager({
