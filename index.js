@@ -164,16 +164,20 @@ const secretsParser = function () {
 
 const init = function () {
   return new Promise(async (resolve, reject) => {
-    const envConf = await envParser()
-    const fileConf = await fileParser()
-    const secretsConf = await secretsParser()
-    const cliConf = await cliParser()
+    try {
+      const envConf = await envParser()
+      const fileConf = await fileParser()
+      const secretsConf = await secretsParser()
+      const cliConf = await cliParser()
 
-    let result = {}
-    _.assign(result, envConf, fileConf, secretsConf, cliConf)
-    result.keys = Object.keys(result)
+      let result = {}
+      _.assign(result, envConf, fileConf, secretsConf, cliConf)
+      result.keys = Object.keys(result)
 
-    resolve(result)
+      resolve(result)
+    } catch (err) {
+      reject(err)
+    }
   })
 }
 
