@@ -1,4 +1,5 @@
 const path = require('path')
+const fs = require('fs')
 const argv = require('yargs').argv
 const _ = require('lodash')
 const async = require('async')
@@ -110,8 +111,15 @@ const fileParser = function () {
     if (!env) {
       resolve({})
     }
+
     const cwd = process.cwd()
-    const envFile = require(path.join(cwd, '/config/', env))
+    const envFilePath = path.join(cwd, '/config/', env)
+    if (!fs.existsSync(envFilePath)) {
+      console.log(`'${envFilePath}' doesn't exist - skipping`)
+      resolve({})
+    }
+
+    const envFile = require(envFilePath)
     const keys = Object.keys(envFile)
     const result = parser(keys, envFile)
     resolve(result)
