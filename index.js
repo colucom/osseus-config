@@ -109,13 +109,14 @@ const envParser = function () {
 const fileParser = function () {
   return new Promise((resolve, reject) => {
     if (!env) {
+      console.warn(`missing env configuration - skipping`)
       resolve({})
     }
 
     const cwd = process.cwd()
     const envFilePath = path.join(cwd, '/config/', env)
     if (!fs.existsSync(envFilePath)) {
-      console.log(`'${envFilePath}' doesn't exist - skipping`)
+      console.warn(`'${envFilePath}' doesn't exist - skipping`)
       resolve({})
     }
 
@@ -181,6 +182,10 @@ const init = function () {
       let result = {}
       _.assign(result, envConf, fileConf, secretsConf, cliConf)
       result.keys = Object.keys(result)
+
+      if (result.keys.length === 0) {
+        reject(new Error(`no configuration found - see https://github.com/colucom/osseus-config#usage`))
+      }
 
       resolve(result)
     } catch (err) {
