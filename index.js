@@ -1,5 +1,4 @@
 const path = require('path')
-const fs = require('fs')
 const argv = require('yargs').argv
 const _ = require('lodash')
 const async = require('async')
@@ -8,6 +7,9 @@ const env = (argv['ENV'] || process.env['ENV'] || process.env['CFG_ENV'] || '').
 const application = (argv['APPLICATION_NAME'] || process.env['APPLICATION_NAME'] || process.env['CFG_APPLICATION_NAME'] || '').toUpperCase()
 const endpoint = argv['AWS_SECRETS_ENDPOINT'] || process.env['AWS_SECRETS_ENDPOINT'] || process.env['CFG_AWS_SECRETS_ENDPOINT'] || 'https://secretsmanager.eu-west-1.amazonaws.com'
 const region = argv['AWS_REGION'] || process.env['AWS_REGION'] || process.env['CFG_AWS_REGION'] || 'eu-west-1'
+
+console.log(`env: ${env || 'undefined'}, application: ${application || 'undefined'}`)
+console.log(`=========================================`)
 
 // Create a Secrets Manager client
 const secretsClient = new AWS.SecretsManager({
@@ -115,15 +117,16 @@ const fileParser = function () {
 
     const cwd = process.cwd()
     const envFilePath = path.join(cwd, '/config/', env)
-    if (!fs.existsSync(envFilePath)) {
-      console.warn(`'${envFilePath}' doesn't exist - skipping`)
+
+    try {
+      const envFile = require(envFilePath)
+      const keys = Object.keys(envFile)
+      const result = parser(keys, envFile)
+      resolve(result)
+    } catch (err) {
+      console.warn(`could not require ${envFilePath} - skipping`)
       resolve({})
     }
-
-    const envFile = require(envFilePath)
-    const keys = Object.keys(envFile)
-    const result = parser(keys, envFile)
-    resolve(result)
   })
 }
 
@@ -182,8 +185,11 @@ const init = function () {
       let result = {}
       _.assign(result, envConf, fileConf, secretsConf, cliConf)
       result.keys = Object.keys(result)
+      let keysWithOsseusPrefix = result.keys.filter(obj => {
+        return obj.startsWith('osseus')
+      })
 
-      if (result.keys.length === 0) {
+      if (keysWithOsseusPrefix.length === 0) {
         reject(new Error(`no configuration found - see https://github.com/colucom/osseus-config#usage`))
       }
 
