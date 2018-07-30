@@ -108,7 +108,7 @@ const envParser = function () {
   })
 }
 
-const fileParser = function (prefix) {
+const fileParser = function () {
   return new Promise((resolve, reject) => {
     if (!env) {
       console.warn(`missing env configuration - skipping`)
@@ -120,7 +120,8 @@ const fileParser = function (prefix) {
 
     try {
       const envFile = require(envFilePath)
-      const result = prefix ? parser(Object.keys(envFile[prefix]), envFile[prefix]) : parser(Object.keys(envFile), envFile)
+      const keys = Object.keys(envFile)
+      const result = parser(keys, envFile)
       resolve(result)
     } catch (err) {
       console.warn(`could not require ${envFilePath} - skipping`)
@@ -173,11 +174,11 @@ const secretsParser = function () {
   })
 }
 
-const init = function (prefix) {
+const init = function () {
   return new Promise(async (resolve, reject) => {
     try {
       const envConf = await envParser()
-      const fileConf = await fileParser(prefix)
+      const fileConf = await fileParser()
       const secretsConf = await secretsParser()
       const cliConf = await cliParser()
 
