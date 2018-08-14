@@ -7,6 +7,7 @@ const env = (argv['ENV'] || process.env['ENV'] || process.env['CFG_ENV'] || '').
 const application = (argv['APPLICATION_NAME'] || process.env['APPLICATION_NAME'] || process.env['CFG_APPLICATION_NAME'] || '').toUpperCase()
 const endpoint = argv['AWS_SECRETS_ENDPOINT'] || process.env['AWS_SECRETS_ENDPOINT'] || process.env['CFG_AWS_SECRETS_ENDPOINT'] || 'https://secretsmanager.eu-west-1.amazonaws.com'
 const region = argv['AWS_REGION'] || process.env['AWS_REGION'] || process.env['CFG_AWS_REGION'] || 'eu-west-1'
+const util = require('util')
 
 console.log(`env: ${env || 'undefined'}, application: ${application || 'undefined'}`)
 console.log(`=========================================`)
@@ -46,13 +47,14 @@ const parser = function (keys, data) {
   return result
 }
 
-const fetchSecrets = function (token, limit, list, cb) {
+const fetchSecrets = function (token, limit, globalSecrets, appSecrets, cb) {
   if (!env || !application) {
     console.warn(`missing secrets configuration - skipping`)
     return cb(null, [])
   }
 
-  list = list || []
+  globalSecrets = globalSecrets || []
+  appSecrets = appSecrets || []
 
   let options = {
     MaxResults: limit
@@ -63,7 +65,7 @@ const fetchSecrets = function (token, limit, list, cb) {
   secretsClient.listSecrets(options, function (err, secretList) {
     if (err) {
       console.error(`cannot get secrets list with error: ${err}`)
-      return cb(null, [])
+      return cb(err)
     }
 
     if (!secretList || secretList.length === 0) {
@@ -71,21 +73,23 @@ const fetchSecrets = function (token, limit, list, cb) {
       return cb(null, [])
     }
 
-    const filtered = secretList.SecretList.filter(function (entry) {
-      const name = entry.Name && entry.Name.toUpperCase()
-      const check = env + '/' + application + '_'
-      const general = env + '/' + 'GLOBAL_'
-
-      return (!!~(name.indexOf(check.toUpperCase())) || !!~(name.indexOf(general.toUpperCase())))
-    })
-
-    const concated = list.concat(filtered)
+    const appConcated = appSecrets.concat(filterSecretByString(secretList, application))
+    const globalCcncated = globalSecrets.concat(filterSecretByString(secretList, "GLOBAL_"))
 
     if (secretList.NextToken) {
-      return fetchSecrets(token, limit, concated, cb)
+      return fetchSecrets(token, limit, globalCcncated, appConcated, cb)
     } else {
-      return cb(null, concated)
+      return cb(null, globalCcncated.concat(appConcated))
     }
+  })
+}
+
+const filterSecretByString = function (secretList, str) {
+  return secretList.SecretList.filter(function (entry) {
+    const name = entry.Name && entry.Name.toUpperCase()
+    const general = env + '/' + str
+
+    return (!!~(name.indexOf(general.toUpperCase())))
   })
 }
 
@@ -132,7 +136,7 @@ const fileParser = function () {
 
 const secretsParser = function () {
   return new Promise((resolve, reject) => {
-    fetchSecrets(null, 50, [], function (err, filtered) {
+    fetchSecrets(null, 50, [], [], function (err, filtered) {
       if (err) {
         reject(err)
       }
