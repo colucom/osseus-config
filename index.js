@@ -63,7 +63,7 @@ const fetchSecrets = function (token, limit, list, cb) {
   secretsClient.listSecrets(options, function (err, secretList) {
     if (err) {
       console.error(`cannot get secrets list with error: ${err}`)
-      return cb(err)
+      return cb(null, [])
     }
 
     if (!secretList || secretList.length === 0) {
