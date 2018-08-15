@@ -141,7 +141,7 @@ const secretsParser = function () {
         reject(err)
       }
 
-      async.each(filtered, function (secretFile, icb) {
+      async.eachSeries(filtered, function (secretFile, icb) {
         console.log(`loading ${secretFile.ARN}`)
         secretsClient.getSecretValue({SecretId: secretFile.ARN}, function (err, data) {
           if (err) {
