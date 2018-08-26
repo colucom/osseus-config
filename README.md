@@ -161,5 +161,8 @@ Will result in:
   keys: [ 'my_param', 'env' ] }
 ```
 
+## Contributing
+Please see [contributing guidelines](https://github.com/colucom/osseus-config/blob/master/.github/CONTRIBUTING.md).
+
 ## License
 Code released under the [MIT License](https://github.com/colucom/osseus-config/blob/master/LICENSE).
