@@ -7,7 +7,6 @@ const env = (argv['ENV'] || process.env['ENV'] || process.env['CFG_ENV'] || '').
 const application = (argv['APPLICATION_NAME'] || process.env['APPLICATION_NAME'] || process.env['CFG_APPLICATION_NAME'] || '').toUpperCase()
 const endpoint = argv['AWS_SECRETS_ENDPOINT'] || process.env['AWS_SECRETS_ENDPOINT'] || process.env['CFG_AWS_SECRETS_ENDPOINT'] || 'https://secretsmanager.eu-west-1.amazonaws.com'
 const region = argv['AWS_REGION'] || process.env['AWS_REGION'] || process.env['CFG_AWS_REGION'] || 'eu-west-1'
-const util = require('util')
 
 console.log(`env: ${env || 'undefined'}, application: ${application || 'undefined'}`)
 console.log(`=========================================`)
@@ -18,9 +17,8 @@ const secretsClient = new AWS.SecretsManager({
   region: region
 })
 
-const result = {}
-
 const parser = function (keys, data) {
+  let result = {}
   keys.forEach((k) => {
     let value = data[k]
     if (typeof value === 'string') {
@@ -34,7 +32,6 @@ const parser = function (keys, data) {
       let temp = lowerK.split('_')
       let topKey = _.slice(temp, 0, 2).join('_')
       let innerKey = _.slice(temp, 2, temp.length).join('_')
-
       result[topKey] = result[topKey] || {}
       result[topKey][innerKey] = value
     } else if (_.startsWith(lowerK, 'cfg_')) {
@@ -44,17 +41,17 @@ const parser = function (keys, data) {
       result[lowerK] = value
     }
   })
+  console.log("RESULT", result)
   return result
 }
 
-const fetchSecrets = function (token, limit, globalSecrets, appSecrets, cb) {
+const fetchSecrets = function (token, limit, list, cb) {
   if (!env || !application) {
     console.warn(`missing secrets configuration - skipping`)
     return cb(null, [])
   }
 
-  globalSecrets = globalSecrets || []
-  appSecrets = appSecrets || []
+  list = list || []
 
   let options = {
     MaxResults: limit
@@ -73,23 +70,21 @@ const fetchSecrets = function (token, limit, globalSecrets, appSecrets, cb) {
       return cb(null, [])
     }
 
-    const appConcated = appSecrets.concat(filterSecretByString(secretList, application))
-    const globalConcated = globalSecrets.concat(filterSecretByString(secretList, 'GLOBAL_'))
+    const filtered = secretList.SecretList.filter(function (entry) {
+      const name = entry.Name && entry.Name.toUpperCase()
+      const check = env + '/' + application + '_'
+      const general = env + '/' + 'GLOBAL_'
+
+      return (!!~(name.indexOf(check.toUpperCase())) || !!~(name.indexOf(general.toUpperCase())))
+    })
+
+    const concated = list.concat(filtered)
 
     if (secretList.NextToken) {
-      return fetchSecrets(token, limit, globalConcated, appConcated, cb)
+      return fetchSecrets(token, limit, concated, cb)
     } else {
-      return cb(null, globalConcated.concat(appConcated))
+      return cb(null, concated)
     }
-  })
-}
-
-const filterSecretByString = function (secretList, str) {
-  return secretList.SecretList.filter(function (entry) {
-    const name = entry.Name && entry.Name.toUpperCase()
-    const general = env + '/' + str
-
-    return (!!~(name.indexOf(general.toUpperCase())))
   })
 }
 
@@ -136,12 +131,13 @@ const fileParser = function () {
 
 const secretsParser = function () {
   return new Promise((resolve, reject) => {
-    fetchSecrets(null, 50, [], [], function (err, filtered) {
+    let secretsResult = {}
+    fetchSecrets(null, 50, [], function (err, filtered) {
       if (err) {
         reject(err)
       }
 
-      async.eachSeries(filtered, function (secretFile, icb) {
+      async.each(filtered, function (secretFile, icb) {
         console.log(`loading ${secretFile.ARN}`)
         secretsClient.getSecretValue({SecretId: secretFile.ARN}, function (err, data) {
           if (err) {
@@ -157,7 +153,8 @@ const secretsParser = function () {
             if (data.SecretString !== '') {
               try {
                 const JSONdata = JSON.parse(data.SecretString)
-                return icb(null, parser(Object.keys(JSONdata), JSONdata))
+                secretsResult = _.merge(secretsResult, parser(Object.keys(JSONdata), JSONdata))
+                return icb()
               } catch (e) {
                 icb(e)
               }
@@ -167,12 +164,12 @@ const secretsParser = function () {
             }
           }
         })
-      }, function (err, result) {
+      }, function (err) {
         if (err) {
           console.error(err)
           reject(err)
         }
-        resolve(_.merge({}, result))
+        resolve(secretsResult)
       })
     })
   })
