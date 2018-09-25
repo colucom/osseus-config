@@ -42,7 +42,6 @@ const parser = function (keys, data) {
       result[lowerK] = value
     }
   })
-
   return result
 }
 
@@ -87,7 +86,7 @@ const filterSecretByString = function (secretList, str) {
   return secretList.SecretList.filter(function (entry) {
     const name = entry.Name && entry.Name.toUpperCase()
     const general = env + '/' + str
-     return (!!~(name.indexOf(general.toUpperCase())))
+    return (!!~(name.indexOf(general.toUpperCase())))
   })
 }
 
