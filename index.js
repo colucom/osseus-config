@@ -186,7 +186,10 @@ const init = function () {
       const secretsConf = await secretsParser()
       const cliConf = await cliParser()
 
-      let result = {}
+      let result = {
+        env,
+        application_name: application
+      }
       _.assign(result, envConf, fileConf, secretsConf, cliConf)
       result.keys = Object.keys(result)
       let keysWithOsseusPrefix = result.keys.filter(obj => {
