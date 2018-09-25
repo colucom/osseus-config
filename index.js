@@ -18,9 +18,8 @@ const secretsClient = new AWS.SecretsManager({
   region: region
 })
 
-const result = {}
-
 const parser = function (keys, data) {
+  let result = {}
   keys.forEach((k) => {
     let value = data[k]
     if (typeof value === 'string') {
@@ -34,7 +33,6 @@ const parser = function (keys, data) {
       let temp = lowerK.split('_')
       let topKey = _.slice(temp, 0, 2).join('_')
       let innerKey = _.slice(temp, 2, temp.length).join('_')
-
       result[topKey] = result[topKey] || {}
       result[topKey][innerKey] = value
     } else if (_.startsWith(lowerK, 'cfg_')) {
@@ -88,7 +86,6 @@ const filterSecretByString = function (secretList, str) {
   return secretList.SecretList.filter(function (entry) {
     const name = entry.Name && entry.Name.toUpperCase()
     const general = env + '/' + str
-
     return (!!~(name.indexOf(general.toUpperCase())))
   })
 }
@@ -136,6 +133,7 @@ const fileParser = function () {
 
 const secretsParser = function () {
   return new Promise((resolve, reject) => {
+    let secretsResult = {}
     fetchSecrets(null, 50, [], [], function (err, filtered) {
       if (err) {
         reject(err)
@@ -157,7 +155,8 @@ const secretsParser = function () {
             if (data.SecretString !== '') {
               try {
                 const JSONdata = JSON.parse(data.SecretString)
-                return icb(null, parser(Object.keys(JSONdata), JSONdata))
+                secretsResult = _.merge(secretsResult, parser(Object.keys(JSONdata), JSONdata))
+                return icb()
               } catch (e) {
                 icb(e)
               }
@@ -167,12 +166,12 @@ const secretsParser = function () {
             }
           }
         })
-      }, function (err, result) {
+      }, function (err) {
         if (err) {
           console.error(err)
           reject(err)
         }
-        resolve(_.merge({}, result))
+        resolve(secretsResult)
       })
     })
   })
@@ -186,7 +185,10 @@ const init = function () {
       const secretsConf = await secretsParser()
       const cliConf = await cliParser()
 
-      let result = {}
+      let result = {
+        env,
+        application_name: application
+      }
       _.assign(result, envConf, fileConf, secretsConf, cliConf)
       result.keys = Object.keys(result)
       let keysWithOsseusPrefix = result.keys.filter(obj => {
