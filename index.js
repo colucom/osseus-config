@@ -8,6 +8,7 @@ const application = (argv['APPLICATION_NAME'] || process.env['APPLICATION_NAME']
 const endpoint = argv['AWS_SECRETS_ENDPOINT'] || process.env['AWS_SECRETS_ENDPOINT'] || process.env['CFG_AWS_SECRETS_ENDPOINT'] || 'https://secretsmanager.eu-west-1.amazonaws.com'
 const region = argv['AWS_REGION'] || process.env['AWS_REGION'] || process.env['CFG_AWS_REGION'] || 'eu-west-1'
 const util = require('util')
+const aws = require('./lib/aws')()
 
 console.log(`env: ${env || 'undefined'}, application: ${application || 'undefined'}`)
 console.log(`=========================================`)
@@ -184,10 +185,15 @@ const init = function () {
       const fileConf = await fileParser()
       const secretsConf = await secretsParser()
       const cliConf = await cliParser()
+      const {name, pid} = await aws.getInstanceId()
 
       let result = {
         env,
-        application_name: application
+        application_name: application,
+        hostInfo: {
+          hostname: name,
+          pid: pid
+        }
       }
       _.assign(result, envConf, fileConf, secretsConf, cliConf)
       result.keys = Object.keys(result)
