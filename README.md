@@ -34,7 +34,12 @@ console.log(config)
 ### hostInfo
 
 You can use the `hostInfo` property in the osseus.config object.
-This property will contain the `hostname` and `pid` of the AWS instance or the localhost machine.
+
+In case your app is running on:
+* localhost
+    * `hostname` is the machine name
+* aws
+    * `hostname` is the instance id
 
 These props can be accessed by: 
 `osseus.config.hostInfo.hostname` and `osseus.config.hostInfo.pid`
