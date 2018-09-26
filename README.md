@@ -29,6 +29,21 @@ const config = await OsseusConfig.init()
 console.log(config)
 ```
 
+## Special Properties
+
+### hostInfo
+
+You can use the `hostInfo` property in the osseus.config object.
+
+In case your app is running on:
+* localhost
+    * `hostname` is the machine name
+* aws
+    * `hostname` is the instance id
+
+These props can be accessed by: 
+`osseus.config.hostInfo.hostname` and `osseus.config.hostInfo.pid`
+
 ### Environment variables
 Environment variables must have a `CFG_` prefix in order to be parsed by `osseus-config`
 
