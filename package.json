@@ -1,6 +1,6 @@
 {
   "name": "@colucom/osseus-config",
-  "version": "0.1.9",
+  "version": "0.2.0",
   "description": "Osseus config",
   "scripts": {
     "build": "npm install",
