@@ -1,5 +1,5 @@
 {
-  "name": "osseus-config",
+  "name": "@colucom/osseus-config",
   "version": "0.1.9",
   "description": "Osseus config",
   "scripts": {
