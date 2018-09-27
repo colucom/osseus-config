@@ -2,7 +2,7 @@
 
 # Osseus Config
 
-The osseus configuration module parses: 
+The osseus configuration module parses:
 
 * Environment variables
 * Environment specific files
@@ -16,7 +16,7 @@ The result is an object which will be used by other [osseus](https://github.com/
 
 ## Install
 ```bash
-$ npm install osseus-config
+$ npm install @colucom/osseus-config
 ```
 
 ## Usage
@@ -41,7 +41,7 @@ In case your app is running on:
 * aws
     * `hostname` is the instance id
 
-These props can be accessed by: 
+These props can be accessed by:
 `osseus.config.hostInfo.hostname` and `osseus.config.hostInfo.pid`
 
 ### Environment variables
