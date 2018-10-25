@@ -194,7 +194,7 @@ const init = function () {
           pid: pid
         }
       }
-      _.assign(result, envConf, fileConf, secretsConf, cliConf)
+      _.merge(result, envConf, fileConf, secretsConf, cliConf)
       result.keys = Object.keys(result)
       let keysWithOsseusPrefix = result.keys.filter(obj => {
         return obj.startsWith('osseus')
