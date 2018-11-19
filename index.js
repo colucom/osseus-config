@@ -71,7 +71,7 @@ const fetchSecrets = function (token, limit, globalSecrets, appSecrets, cb) {
       return cb(null, [])
     }
 
-    const appConcated = appSecrets.concat(filterSecretByString(secretList, application))
+    const appConcated = appSecrets.concat(filterSecretByString(secretList, application + '_'))
     const globalConcated = globalSecrets.concat(filterSecretByString(secretList, 'GLOBAL_'))
 
     if (secretList.NextToken) {
