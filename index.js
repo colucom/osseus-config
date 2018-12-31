@@ -20,6 +20,15 @@ const secretsClient = new AWS.SecretsManager({
 
 const parser = function (keys, data) {
   let result = {}
+
+  const osseusPrefix = (k, value) => {
+    let temp = k.split('_')
+    let topKey = _.slice(temp, 0, 2).join('_')
+    let innerKey = _.slice(temp, 2, temp.length).join('_')
+    result[topKey] = result[topKey] || {}
+    result[topKey][innerKey] = value
+  }
+
   keys.forEach((k) => {
     let value = data[k]
     if (typeof value === 'string') {
@@ -30,14 +39,14 @@ const parser = function (keys, data) {
     } catch (e) {}
     let lowerK = k.toLowerCase()
     if (_.startsWith(lowerK, 'osseus_')) {
-      let temp = lowerK.split('_')
-      let topKey = _.slice(temp, 0, 2).join('_')
-      let innerKey = _.slice(temp, 2, temp.length).join('_')
-      result[topKey] = result[topKey] || {}
-      result[topKey][innerKey] = value
+      osseusPrefix(lowerK, value)
     } else if (_.startsWith(lowerK, 'cfg_')) {
       let key = lowerK.replace('cfg_', '')
-      result[key] = value
+      if (_.startsWith(key, 'osseus_')) {
+        osseusPrefix(key, value)
+      } else {
+        result[key] = value
+      }
     } else {
       result[lowerK] = value
     }
