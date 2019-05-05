@@ -51,6 +51,11 @@ const fetchSecrets = function (token, limit, globalSecrets, appSecrets, cb) {
     return cb(null, [])
   }
 
+  if (process.env['SKIP_SECRETS_FILES'] || argv['SKIP_SECRETS_FILES']) {
+    console.warn(`SKIP_SECRETS_FILES - skipping secrets files`)
+    return cb(null, [])
+  }
+
   globalSecrets = globalSecrets || []
   appSecrets = appSecrets || []
 
@@ -141,7 +146,7 @@ const secretsParser = function () {
 
       async.eachSeries(filtered, function (secretFile, icb) {
         console.log(`loading ${secretFile.ARN}`)
-        secretsClient.getSecretValue({SecretId: secretFile.ARN}, function (err, data) {
+        secretsClient.getSecretValue({ SecretId: secretFile.ARN }, function (err, data) {
           if (err) {
             if (err.code === 'ResourceNotFoundException') {
               console.error(`The requested secret ${secretFile.ARN} was not found`)
@@ -184,7 +189,7 @@ const init = function () {
       const fileConf = await fileParser()
       const secretsConf = await secretsParser()
       const cliConf = await cliParser()
-      const {name, pid} = await aws.getInstanceId()
+      const { name, pid } = await aws.getInstanceId()
 
       let result = {
         env,
